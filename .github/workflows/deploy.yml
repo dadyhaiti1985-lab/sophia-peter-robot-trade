@@ -15,7 +15,7 @@ jobs:
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: 🔨 Install and Build
         run: |
@@ -23,7 +23,10 @@ jobs:
           npm run build
 
       - name: 🚀 SFTP Deploy
+        if: ${{ env.SFTP_SERVER != '' }}
         uses: wlixcc/SFTP-Deploy-Action@v1.2.6
+        env:
+          SFTP_SERVER: ${{ secrets.SFTP_SERVER }}
         with:
           server: ${{ secrets.SFTP_SERVER }}
           username: ${{ secrets.SFTP_USERNAME }}
