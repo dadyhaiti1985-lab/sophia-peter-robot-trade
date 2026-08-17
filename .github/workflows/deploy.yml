@@ -22,6 +22,11 @@ jobs:
           npm install
           npm run build
 
+      - name: 📋 Configure deploy variables
+        env:
+          SFTP_PORT_SECRET: ${{ secrets.SFTP_PORT }}
+        run: echo "DEPLOY_PORT=${SFTP_PORT_SECRET:-22}" >> $GITHUB_ENV
+
       - name: 🚀 SFTP Deploy
         if: ${{ env.SFTP_SERVER != '' }}
         uses: wlixcc/SFTP-Deploy-Action@v1.2.6
@@ -31,7 +36,7 @@ jobs:
           server: ${{ secrets.SFTP_SERVER }}
           username: ${{ secrets.SFTP_USERNAME }}
           password: ${{ secrets.SFTP_PASSWORD }}
-          port: ${{ secrets.SFTP_PORT || '22' }}
+          port: ${{ env.DEPLOY_PORT }}
           local_path: ./dist/*
           remote_path: /domains/mistyrose-hummingbird-755752.hostingersite.com/public_html/
           sftp_only: true
