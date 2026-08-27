@@ -64,9 +64,6 @@ export default function AIChatWindow({ open, balance, botActive, trades = [] }) 
     ? Math.round((trades.filter(t => Number(t.pnl ?? 0) > 0).length / trades.length) * 100)
     : 0;
   const totalPnl = trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0);
-  const recentSide = trades[0]?.type || trades[0]?.side || 'N/A';
-  const recentAsset = trades[0]?.asset || trades[0]?.symbol || 'N/A';
-  const averagePnl = trades.length ? totalPnl / trades.length : 0;
 
   function buildContext() {
     return `[USER TRADING CONTEXT]
@@ -76,19 +73,6 @@ Total Trades: ${trades.length}
 Win Rate: ${winRate}%
 Total P&L: $${totalPnl.toFixed(2)}
 Recent Trades (last 5): ${trades.slice(0, 5).map(t => `${t.asset || t.symbol} ${t.type || t.side} P&L:${Number(t.pnl ?? 0).toFixed(2)}`).join(', ') || 'None'}
-[STRATEGY PARAMETERS]
-Default Risk Per Trade: 1%-2% of equity
-Default Risk/Reward: 1:2 minimum
-Execution Mode: ${botActive ? 'Bot is active' : 'Bot is inactive'}
-Recent Bias: ${recentSide} on ${recentAsset}
-Average Trade P&L: $${averagePnl.toFixed(2)}
-[/STRATEGY PARAMETERS]
-
-[INDICATOR SNAPSHOT]
-Win Rate: ${winRate}%
-Total P&L: $${totalPnl.toFixed(2)}
-Recent Momentum: ${averagePnl >= 0 ? 'Positive' : 'Negative'}
-[/INDICATOR SNAPSHOT]
 [/USER TRADING CONTEXT]`;
   }
 

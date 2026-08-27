@@ -1,9 +1,3 @@
-/*
- * PROPRIETARY INTELLECTUAL PROPERTY NOTICE
- * ORACLE TRADER PRO / DADY DESTIN — ALL RIGHTS RESERVED.
- * Unauthorized deployment, copying, or execution is prohibited.
- */
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App';

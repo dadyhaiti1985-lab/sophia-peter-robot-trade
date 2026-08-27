@@ -206,78 +206,6 @@ function signImageReference(reference, token) {
 	return appendToken(`${base}${path}`, token);
 }
 
-function extractUserText(userMessage = []) {
-	return userMessage
-		.filter((block) => block?.type === ContentBlockType.Text && typeof block.text === 'string')
-		.map((block) => block.text.trim())
-		.filter(Boolean)
-		.join(' ')
-		.trim();
-}
-
-function extractPromptContext(promptText) {
-	const getLine = (label) => {
-		const match = promptText.match(new RegExp(`${label}:\\s*([^\\n\\r]+)`, 'i'));
-		return match?.[1]?.trim() || null;
-	};
-
-	return {
-		balance: getLine('Balance'),
-		botStatus: getLine('Bot Status'),
-		winRate: getLine('Win Rate'),
-		totalPnl: getLine('Total P&L'),
-		pair: getLine('Pair') || getLine('Pè Aktif'),
-		timeframe: getLine('Timeframe'),
-		capital: getLine('Capital'),
-		recentTrades: getLine('Recent Trades'),
-	};
-}
-
-function buildLocalFallbackReply(promptText) {
-	const context = extractPromptContext(promptText);
-	const lower = promptText.toLowerCase();
-	const lines = [];
-
-	lines.push('ORACLE Intelligence fallback mode is active because the external LLM proxy is not configured.');
-
-	if (context.pair || context.timeframe || context.capital) {
-		lines.push(`Context: ${[context.pair && `Pair ${context.pair}`, context.timeframe && `Timeframe ${context.timeframe}`, context.capital && `Capital ${context.capital}`].filter(Boolean).join(' · ')}`);
-	}
-
-	if (context.balance || context.winRate || context.totalPnl) {
-		lines.push(`Portfolio: ${[context.balance && `Balance ${context.balance}`, context.winRate && `Win Rate ${context.winRate}`, context.totalPnl && `P&L ${context.totalPnl}`].filter(Boolean).join(' · ')}`);
-	}
-
-	if (lower.includes('win rate')) {
-		lines.push(`Your win rate is ${context.winRate || 'not available in the current prompt'}.`);
-	} else if (lower.includes('p&l') || lower.includes('pnl')) {
-		lines.push(`Your total P&L is ${context.totalPnl || 'not available in the current prompt'}.`);
-	} else if (lower.includes('start the trading bot') || lower.includes('start trading bot') || lower.includes('bot')) {
-		lines.push(`Bot status: ${context.botStatus || 'unknown'}. Keep risk within 1%-2%, require hard SL/TP, and only trade when confluence is strong.`);
-	} else if (lower.includes('risk')) {
-		lines.push('Risk control: keep position risk at 1%-2% of equity, use a hard stop-loss, and target at least 1:2 risk/reward.');
-	} else {
-		lines.push('Use the dashboard context to ask about market conditions, win rate, P&L, risk, or bot execution.');
-	}
-
-	lines.push('To restore provider-backed chat, set INTEGRATED_AI_API_URL and INTEGRATED_AI_API_KEY in apps/api/.env.');
-
-	return lines.join('\n');
-}
-
-function createSseStreamFromText(text) {
-	const passThrough = new PassThrough();
-	setImmediate(() => {
-		passThrough.end([
-			`data: ${JSON.stringify({ type: SSEEventType.Content, data: { content: `${text}\n` } })}`,
-			`data: ${JSON.stringify({ type: SSEEventType.Completed, data: { content: '[COMPLETED]' } })}`,
-			'',
-		].join('\n'));
-	});
-
-	return passThrough;
-}
-
 /**
  * Sends a message to the AI proxy and pipes SSE events to the client.
  * Assistant message is saved to PocketBase when the stream ends.
@@ -287,49 +215,32 @@ function createSseStreamFromText(text) {
  * @returns {Promise<import('node:stream').Readable>}
  */
 export async function stream({ userId, systemPrompt, userMessage }) {
-	const promptText = extractUserText(userMessage);
-	const fallbackReply = buildLocalFallbackReply(promptText);
-	const proxyUrl = process.env.INTEGRATED_AI_API_URL?.trim();
-	const proxyKey = process.env.INTEGRATED_AI_API_KEY?.trim();
-
-	if (!proxyUrl || !proxyKey) {
-		logger.warn('[integrated-ai] external LLM proxy not configured; using local fallback reply');
-		return createSseStreamFromText(fallbackReply);
-	}
-
 	const fileToken = await pocketbaseClient.files.getToken();
 	const history = await getHistory({ userId, fileToken });
 
-	let response;
-	try {
-		response = await fetch(`${proxyUrl}/generate`, {
-			method: 'POST',
-			headers: {
-				'Accept': 'text/event-stream',
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${proxyKey}`,
-				...(process.env.PROXY_ENTRANCE_ID && { 'X-Proxy-Entrance-Id': process.env.PROXY_ENTRANCE_ID }),
-			},
-			body: JSON.stringify({
-				website_id: process.env.WEBSITE_ID,
-				history: [
-					...history,
-					mapUserMessage({ message: userMessage, fileToken }),
-				],
-				system_prompt: systemPrompt,
-				stream: true,
-				environment: process.env.NODE_ENV === NodeEnv.Production ? 'prod' : 'dev',
-			}),
-		});
-	} catch (error) {
-		logger.warn('[integrated-ai] provider fetch failed; using local fallback reply', error.message);
-		return createSseStreamFromText(`${fallbackReply}\n\nExternal provider fetch failed.`);
-	}
+	const response = await fetch(`${process.env.INTEGRATED_AI_API_URL}/generate`, {
+		method: 'POST',
+		headers: {
+			'Accept': 'text/event-stream',
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${process.env.INTEGRATED_AI_API_KEY}`,
+			...(process.env.PROXY_ENTRANCE_ID && { 'X-Proxy-Entrance-Id': process.env.PROXY_ENTRANCE_ID }),
+		},
+		body: JSON.stringify({
+			website_id: process.env.WEBSITE_ID,
+			history: [
+				...history,
+				mapUserMessage({ message: userMessage, fileToken }),
+			],
+			system_prompt: systemPrompt,
+			stream: true,
+			environment: process.env.NODE_ENV === NodeEnv.Production ? 'prod' : 'dev',
+		}),
+	});
 
 	if (!response.ok) {
 		const errorBody = await response.text().catch(() => 'Unknown error');
-		logger.warn(`[integrated-ai] provider returned ${response.status}; using local fallback reply`);
-		return createSseStreamFromText(`${fallbackReply}\n\nExternal provider error: ${errorBody}`);
+		throw new Error(`AI proxy request failed with status ${response.status}: ${errorBody}`);
 	}
 
 	const [clientStream, historyStream] = response.body.tee();

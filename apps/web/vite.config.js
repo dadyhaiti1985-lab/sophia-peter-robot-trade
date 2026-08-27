@@ -380,30 +380,20 @@ export default defineConfig({
 	server: {
 		port: 3000,
 		cors: { origin: AllowedEditorOrigins },
+		headers: {
+			'Cross-Origin-Embedder-Policy': 'credentialless',
+		},
 		proxy: {
 			'/hcgi/platform': {
-				target: 'http://localhost:8090',
+				target: 'http://127.0.0.1:8090',
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/hcgi\/platform/, ''),
 			},
 			'/hcgi/api': {
-				target: 'http://localhost:3001',
+				target: 'http://127.0.0.1:3001',
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/hcgi\/api/, ''),
 			},
-			'/hcgi/oracle_r-pro': {
-				target: 'http://localhost:3001',
-				changeOrigin: true,
-				rewrite: (path) => path.replace(/^\/hcgi\/oracle_r-pro/, '/oracle-trader-pro'),
-			},
-			'/hcgi/oracle-trader-pro': {
-				target: 'http://localhost:3001',
-				changeOrigin: true,
-				rewrite: (path) => path.replace(/^\/hcgi\/oracle-trader-pro/, '/oracle-trader-pro'),
-			},
-		},
-		headers: {
-			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
 		allowedHosts: [
 			'.app-preview.com',

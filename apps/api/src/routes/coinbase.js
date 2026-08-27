@@ -1,8 +1,6 @@
 import express from 'express';
 import logger from '../utils/logger.js';
 import * as coinbase from '../utils/coinbase.js';
-import authMiddleware from '../middleware/auth.js';
-import { getCoinbaseFillHistory } from '../services/coinbase-fills.js';
 
 const router = express.Router();
 
@@ -203,41 +201,6 @@ router.get('/balance', async (req, res) => {
         { symbol: 'ETH', amount: 5.0, value: 10000.00, price: 2000.00 },
       ],
       mock: true,
-    });
-  }
-});
-
-function optionalAuth(req, res, next) {
-  if (!req.headers.authorization) {
-    return next();
-  }
-
-  return authMiddleware(req, res, next);
-}
-
-/**
- * GET /coinbase/fills - Get live fills / filled orders with PocketBase fallback.
- * Query params: limit
- */
-router.get('/fills', optionalAuth, async (req, res) => {
-  if (res.headersSent) return;
-
-  const limit = Number(req.query.limit || 50);
-
-  try {
-    const payload = await getCoinbaseFillHistory({ limit, userId: req.user?.id || null });
-    return res.json({
-      success: true,
-      ...payload,
-    });
-  } catch (error) {
-    logger.error('Failed to fetch Coinbase fills:', error.message);
-    return res.json({
-      success: true,
-      source: 'mock',
-      live: false,
-      updatedAt: new Date().toISOString(),
-      records: [],
     });
   }
 });

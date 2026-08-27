@@ -13,11 +13,7 @@ import SmartMoneyView from '@/views/SmartMoneyView.jsx';
 import EconomicCalendarView from '@/views/EconomicCalendarView.jsx';
 import AnalyticsView from '@/views/AnalyticsView.jsx';
 import TradeHistoryView from '@/views/TradeHistoryView.jsx';
-import ReferralView from '@/views/ReferralView.jsx';
 import SettingsView from '@/views/SettingsView.jsx';
-import DepositsView from '@/views/DepositsView.jsx';
-import WithdrawalsView from '@/views/WithdrawalsView.jsx';
-import ErrorBoundary from '@/components/ErrorBoundary.jsx';
 import SupportView from '@/views/SupportView.jsx';
 import '@/views/ViewStyles.css';
 import { toast } from 'sonner';
@@ -96,34 +92,37 @@ async function authFetch(path, options = {}) {
 }
 
 function renderHashView(hash) {
-  let view;
   switch (hash) {
-    case 'signals':      view = <AISignalsView />;         break;
-    case 'markets':      view = <MarketsView />;           break;
-    case 'analysis':     view = <AIAnalysisView />;        break;
-    case 'trading':      view = <TradingView />;           break;
-    case 'portfolio':    view = <PortfolioView />;         break;
-    case 'orders':       view = <OrdersView />;            break;
-    case 'watchlist':    view = <WatchlistView />;         break;
-    case 'news':         view = <NewsIntelligenceView />;  break;
-    case 'smartmoney':   view = <SmartMoneyView />;        break;
-    case 'calendar':     view = <EconomicCalendarView />; break;
-    case 'analytics':    view = <AnalyticsView />;         break;
-    case 'trade-history':view = <TradeHistoryView />;      break;
-    case 'referral':     view = <ReferralView />;          break;
-    case 'settings':     view = <SettingsView />;          break;
-    case 'support':      view = <SupportView />;           break;
-    case 'deposits':     view = <DepositsView />;          break;
-    case 'withdrawals':  view = <WithdrawalsView />;       break;
-    default:
-      // Unknown hash or no hash — show the main dashboard (null triggers hero layout)
-      return null;
+    case 'signals': return <AISignalsView />;
+    case 'markets': return <MarketsView />;
+    case 'analysis': return <AIAnalysisView />;
+    case 'trading': return <TradingView />;
+    case 'portfolio': return <PortfolioView />;
+    case 'orders': return <OrdersView />;
+    case 'watchlist': return <WatchlistView />;
+    case 'news': return <NewsIntelligenceView />;
+    case 'smartmoney': return <SmartMoneyView />;
+    case 'calendar': return <EconomicCalendarView />;
+    case 'analytics': return <AnalyticsView />;
+    case 'trade-history': return <TradeHistoryView />;
+    case 'settings': return <SettingsView />;
+    case 'support': return <SupportView />;
+    case 'deposits':
+    case 'withdrawals':
+    case 'referral':
+      return (
+        <div className="view-container">
+          <div className="view-header">
+            <h1 style={{ textTransform: 'capitalize' }}>{hash}</h1>
+            <p>Manage your {hash} from this panel</p>
+          </div>
+          <div className="placeholder-content">
+            <p>{hash.charAt(0).toUpperCase() + hash.slice(1)} coming soon</p>
+          </div>
+        </div>
+      );
+    default: return null;
   }
-  return (
-    <ErrorBoundary label={hash}>
-      {view}
-    </ErrorBoundary>
-  );
 }
 
 export default function PremiumDashboard() {
@@ -197,11 +196,11 @@ export default function PremiumDashboard() {
         authFetch('/oracle-trader-pro/trades'),
       ]);
       if (statusRes.status === 'fulfilled' && statusRes.value?.ok) {
-        const s = await statusRes.value.json().catch(() => ({}));
+        const s = await statusRes.value.json();
         setBotActive(Boolean(s.isActive ?? s.botActive));
       }
       if (tradesRes.status === 'fulfilled' && tradesRes.value?.ok) {
-        const data = await tradesRes.value.json().catch(() => []);
+        const data = await tradesRes.value.json();
         setTrades(Array.isArray(data) ? data.slice(0, 20) : []);
       }
       await new Promise(r => setTimeout(r, 500));

@@ -1,51 +1,119 @@
 /**
- * Minimal backtest engine — runs a simple signal-based simulation on candle data.
+ * Backtest Engine
+ * Applies the advanced strategy to historical OHLCV data and generates a performance report.
  */
+import AdvancedStrategyEngine from './advancedStrategyEngine.js';
+import SignalGenerator from './signalGenerator.js';
+import RiskManager from './riskManager.js';
+import NewsFilter from './newsFilter.js';
+import { StrategyAnalyzer } from './strategyAnalyzer.js';
 
+const strategyEngine = new AdvancedStrategyEngine();
+const signalGen = new SignalGenerator();
+const riskMgr = new RiskManager();
+const newsFilter = new NewsFilter();
+const analyzer = new StrategyAnalyzer();
+
+/**
+ * Run a backtest on historical candles.
+ * @param {Array<{open,high,low,close,volume,timestamp}>} candles - full OHLCV history
+ * @param {Object} options
+ * @param {number} options.accountBalance - starting balance
+ * @param {number} options.riskPercent - risk per trade %
+ * @param {number} options.riskRewardRatio
+ * @param {number} options.minConfidence - min confidence to enter (default 80)
+ * @param {Array}  options.newsEvents
+ * @returns {Object} backtest report
+ */
 export function runBacktest(candles, options = {}) {
-	const {
-		initialCapital = 10000,
-		riskPerTrade = 0.02,
-		stopLossPct = 0.02,
-		takeProfitPct = 0.05,
-	} = options;
+  const {
+    accountBalance: startBalance = 10000,
+    riskPercent = 1.5,
+    riskRewardRatio = 2,
+    minConfidence = 80,
+    newsEvents = [],
+  } = options;
 
-	let capital = initialCapital;
-	const trades = [];
+  const LOOKBACK = 60; // minimum candles before we start evaluating
+  const trades = [];
+  let balance = startBalance;
+  let openTrade = null;
 
-	for (let i = 20; i < candles.length - 1; i++) {
-		const slice = candles.slice(i - 20, i + 1);
-		const closes = slice.map((c) => Number(c.close));
-		const sma = closes.reduce((s, v) => s + v, 0) / closes.length;
-		const price = closes[closes.length - 1];
-		const signal = price > sma ? 'buy' : price < sma ? 'sell' : null;
-		if (!signal) continue;
+  for (let i = LOOKBACK; i < candles.length; i++) {
+    const window = candles.slice(0, i + 1);
+    const currentCandle = candles[i];
+    const price = Number(currentCandle.close);
 
-		const size = (capital * riskPerTrade) / (price * stopLossPct);
-		const entry = price;
-		const exitPrice = signal === 'buy'
-			? entry * (1 + takeProfitPct)
-			: entry * (1 - takeProfitPct);
-		const pnl = signal === 'buy'
-			? (exitPrice - entry) * size
-			: (entry - exitPrice) * size;
+    // Check exit conditions for open trade
+    if (openTrade) {
+      const hit = openTrade.direction === 'BUY'
+        ? (price <= openTrade.stopLoss || price >= openTrade.takeProfit)
+        : (price >= openTrade.stopLoss || price <= openTrade.takeProfit);
 
-		capital += pnl;
-		trades.push({ signal, entry, exit: exitPrice, pnl: Number(pnl.toFixed(2)), capitalAfter: Number(capital.toFixed(2)) });
+      if (hit) {
+        const exitPrice = price;
+        const pnl = openTrade.direction === 'BUY'
+          ? (exitPrice - openTrade.entryPrice) * openTrade.units
+          : (openTrade.entryPrice - exitPrice) * openTrade.units;
+        balance += pnl;
+        trades.push({ ...openTrade, exitPrice, pnl, exitIndex: i, balance });
+        openTrade = null;
+      }
+      continue; // hold until exit
+    }
 
-		// skip a few candles after each trade
-		i += 5;
-	}
+    // Calculate indicators
+    const indicators = strategyEngine.calculateIndicators(window);
+    if (!indicators || !indicators.atr) continue;
 
-	const wins = trades.filter((t) => t.pnl > 0).length;
-	const totalPnl = trades.reduce((s, t) => s + t.pnl, 0);
+    // News filter
+    if (newsFilter.shouldBlockTrade(newsEvents)) continue;
 
-	return {
-		initialCapital,
-		finalCapital: Number(capital.toFixed(2)),
-		totalPnl: Number(totalPnl.toFixed(2)),
-		totalTrades: trades.length,
-		winRate: trades.length ? Number(((wins / trades.length) * 100).toFixed(1)) : 0,
-		trades: trades.slice(-50),
-	};
+    // Generate signals
+    const buySignal = signalGen.generateBuySignal(indicators, { price });
+    const sellSignal = signalGen.generateSellSignal(indicators, { price });
+
+    let direction = null;
+    let signalData = null;
+    if (buySignal && buySignal.confidence >= minConfidence) { direction = 'BUY'; signalData = buySignal; }
+    else if (sellSignal && sellSignal.confidence >= minConfidence) { direction = 'SELL'; signalData = sellSignal; }
+
+    if (direction) {
+      const plan = riskMgr.buildTradePlan({ entryPrice: price, atr: indicators.atr, direction, accountBalance: balance, riskPercent, riskRewardRatio });
+      openTrade = {
+        direction,
+        entryPrice: price,
+        stopLoss: plan.stopLoss,
+        takeProfit: plan.takeProfit,
+        units: plan.positionSize.units,
+        riskAmount: plan.positionSize.risk,
+        confidence: signalData.confidence,
+        entryIndex: i,
+        timestamp: currentCandle.timestamp || i,
+      };
+    }
+  }
+
+  // Close any remaining open trade at last price
+  if (openTrade) {
+    const lastPrice = Number(candles[candles.length - 1].close);
+    const pnl = openTrade.direction === 'BUY'
+      ? (lastPrice - openTrade.entryPrice) * openTrade.units
+      : (openTrade.entryPrice - lastPrice) * openTrade.units;
+    balance += pnl;
+    trades.push({ ...openTrade, exitPrice: lastPrice, pnl, exitIndex: candles.length - 1, balance });
+  }
+
+  const performance = analyzer.analyze(trades);
+
+  return {
+    startBalance,
+    endBalance: parseFloat(balance.toFixed(2)),
+    totalReturn: parseFloat(((balance - startBalance) / startBalance * 100).toFixed(2)),
+    totalCandles: candles.length,
+    trades,
+    performance,
+  };
 }
+
+export default { runBacktest };

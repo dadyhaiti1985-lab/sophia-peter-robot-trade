@@ -1,7 +1,7 @@
 import Pocketbase from 'pocketbase';
 import logger from './logger.js';
 
-const POCKETBASE_HOST = process.env.POCKETBASE_URL || 'http://localhost:8090';
+const POCKETBASE_HOST = `http://localhost:8090`;
 
 async function waitForHealth({ retries = 10, delayMs = 1000 } = {}) {
     for (let i = 1; i <= retries; i++) {
@@ -29,12 +29,12 @@ pocketbaseClient.autoCancellation(false);
 
 let authPromise = null;
 
-async function ensureSuperuserAuth() {
-    if (pocketbaseClient.authStore.isValid) {
-        return;
+pocketbaseClient.beforeSend = async function (url, options) {
+    if (url.includes('/api/collections/_superusers/auth-with-password')) {
+        return { url, options };
     }
 
-    if (!authPromise) {
+    if (!pocketbaseClient.authStore.isValid && !authPromise) {
         authPromise = pocketbaseClient.collection('_superusers').authWithPassword(
             process.env.PB_SUPERUSER_EMAIL,
             process.env.PB_SUPERUSER_PASSWORD,
@@ -43,15 +43,9 @@ async function ensureSuperuserAuth() {
         });
     }
 
-    await authPromise;
-}
-
-pocketbaseClient.beforeSend = async function (url, options) {
-    if (url.includes('/api/collections/_superusers/auth-with-password')) {
-        return { url, options };
+    if (authPromise) {
+        await authPromise;
     }
-
-    await ensureSuperuserAuth();
 
     if (pocketbaseClient.authStore.isValid && pocketbaseClient.authStore.token) {
         options.headers = options.headers || {};
@@ -64,11 +58,25 @@ pocketbaseClient.beforeSend = async function (url, options) {
 (async () => {
     try {
         await waitForHealth();
-        await ensureSuperuserAuth();
+
+        if (!pocketbaseClient.authStore.isValid && !authPromise) {
+            authPromise = pocketbaseClient.collection('_superusers').authWithPassword(
+                process.env.PB_SUPERUSER_EMAIL,
+                process.env.PB_SUPERUSER_PASSWORD,
+            ).finally(() => {
+                authPromise = null;
+            });
+        }
+        
+        if (authPromise) {
+            await authPromise;
+        }
+        
         logger.info('PocketBase client initialized successfully');
     } catch (err) {
-        // Log and continue — auth will be retried lazily on each request via beforeSend.
-        logger.warn('PocketBase unavailable at startup; will retry on first request:', err?.message);
+        logger.error('Failed to initialize PocketBase client:', err);
+
+        process.exit(1);
     }
 })();
 

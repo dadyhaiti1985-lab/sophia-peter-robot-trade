@@ -11,11 +11,11 @@ import apiServerClient from '@/lib/apiServerClient';
 import pb from '@/lib/pocketbaseClient';
 
 // ─── System prompt injected before every user message when analyzing market ───
-const MARKET_ANALYSIS_PREFIX = `You are ORACLE Intelligence, an elite Master Trader, Portfolio Strategist, and Execution Risk Manager integrated into Oracle Trader Pro.
-You speak both Haitian Creole and English fluently. Reply in the user's dominant language.
-Use the supplied dashboard context to assess balance, risk, strategy posture, and market conditions.
-When analyzing markets, explain support/resistance, trend direction, entry logic, stop-loss, take-profit, and the reason the bot should or should not act.
-Keep the response concise, execution-focused, and capital-preserving.`;
+const MARKET_ANALYSIS_PREFIX = `You are QuantMaster, an expert AI trading assistant for ORACLE-TRADER-PRO platform. 
+You speak both Haitian Creole and English fluently. 
+Guide users through: setting up Coinbase API keys, adjusting risk/SL/TP parameters, starting/stopping the trading bot, and understanding market analysis.
+When analyzing markets, explain support/resistance levels, trends, and what the bot is doing in clear, friendly language.
+Always respond concisely. For Haitian users, prefer Creole. For English queries, respond in English.`;
 
 const SUGGESTIONS = [
   { text: 'Ki jan mwen ka konekte Coinbase API mwen?', icon: Settings },
@@ -126,7 +126,7 @@ export default function AIAssistantWidget({ selectedPair, selectedTimeframe, cap
     const msg = (text ?? input).trim();
     if (!msg || isStreaming || analyzing) return;
     setInput('');
-    const fullMsg = `${MARKET_ANALYSIS_PREFIX}\n\n[Dashboard Context]\nPair: ${selectedPair}\nTimeframe: ${selectedTimeframe}\nCapital: $${capital}\n[/Dashboard Context]\n\nUser: ${msg}`;
+    const fullMsg = `${MARKET_ANALYSIS_PREFIX}\n\n[Dashboard Context: Pair=${selectedPair}, Timeframe=${selectedTimeframe}, Capital=$${capital}]\n\nUser: ${msg}`;
     sendMessage(fullMsg, []);
   };
 

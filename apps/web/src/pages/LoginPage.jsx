@@ -9,29 +9,43 @@ import { Activity, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const LoginPage = () => {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, checkCredentials } = useAuth();
   const navigate = useNavigate();
+  const redirectingRef = React.useRef(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const redirectAfterLogin = () => {
-    navigate('/dashboard', { replace: true });
+  const redirectAfterLogin = async () => {
+    // Guard: prevent double-redirect
+    if (redirectingRef.current) return;
+    redirectingRef.current = true;
+    try {
+      const hasCredentials = await checkCredentials();
+      if (hasCredentials) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } finally {
+      redirectingRef.current = false;
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
+    const cleanEmail = formData.email.trim();
+    if (!cleanEmail || !formData.password) {
       toast.error('Tanpri antre imèl ak modpas ou (Please enter email and password).');
       return;
     }
     try {
       setLoading(true);
-      await login(formData.email, formData.password);
+      await login(cleanEmail, formData.password);
       toast.success('Ou konekte avèk siksè! (Login successful)');
       setFormData({ email: '', password: '' });
-      navigate('/dashboard', { replace: true });
+      await redirectAfterLogin();
     } catch (error) {
       toast.error(error.message);
     } finally {

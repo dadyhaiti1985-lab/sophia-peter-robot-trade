@@ -24,16 +24,11 @@ function verifySignature(rawBody, signature) {
     logger.warn('[webhook] COINBASE_WEBHOOK_SECRET not set — skipping signature check');
     return true; // allow through so events still work before secret is configured
   }
-  if (!signature || typeof signature !== 'string') return false;
+  if (!signature) return false;
   const computed = crypto
     .createHmac('sha256', WEBHOOK_SECRET)
     .update(rawBody)
     .digest('hex');
-
-  if (computed.length !== signature.length) {
-    return false;
-  }
-
   return crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(signature, 'hex'));
 }
 
