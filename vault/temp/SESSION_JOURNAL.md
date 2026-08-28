@@ -5074,3 +5074,221 @@
 ## 2026-08-28 04:20:04.506Z console.error
 - text: Fetch error from http://localhost:3000/hcgi/api/user/balance: 
 
+## 2026-08-28 04:23:57.650Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 04:24:26.913Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 04:25:04.570Z network.error
+- method: GET
+- url: http://localhost:3000/hcgi/api/user/balance
+- status: 500
+- statusText: Internal Server Error
+- durationMs: 38
+
+## 2026-08-28 04:25:04.570Z console.error
+- text: Fetch error from http://localhost:3000/hcgi/api/user/balance: 
+
+## 2026-08-28 04:26:32.925Z console.warn
+- text: [Perf] Low FPS detected: 19
+
+## 2026-08-28 04:26:44.026Z console.warn
+- text: [Perf] Low FPS detected: 49
+
+## 2026-08-28 04:27:04.212Z console.warn
+- text: [Perf] Low FPS detected: 30
+
+## 2026-08-28 04:28:38.900Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 04:38:36.875Z console.warn
+- text: [Perf] Low FPS detected: 52
+
+## 2026-08-28 04:39:19.244Z console.warn
+- text: [Perf] Low FPS detected: 49
+
+## 2026-08-28 04:40:57.151Z console.warn
+- text: [Perf] Low FPS detected: 51
+
+## 2026-08-28 04:42:09.639Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 04:42:39.876Z console.warn
+- text: [Perf] Low FPS detected: 49
+
+## 2026-08-28 04:44:40.616Z console.warn
+- text: [Perf] Low FPS detected: 40
+
+## 2026-08-28 04:46:15.465Z console.warn
+- text: [Perf] Low FPS detected: 49
+
+## 2026-08-28 04:46:16.472Z console.warn
+- text: [Perf] Low FPS detected: 26
+
+## 2026-08-28 04:46:34.759Z console.warn
+- text: [Perf] Low FPS detected: 41
+
+## 2026-08-28 04:46:35.765Z console.warn
+- text: [Perf] Low FPS detected: 24
+
+## 2026-08-28 04:47:01.352Z console.warn
+- text: [Perf] Low FPS detected: 47
+
+## 2026-08-28 04:47:02.359Z console.warn
+- text: [Perf] Low FPS detected: 37
+
+## 2026-08-28 04:47:14.463Z console.warn
+- text: [Perf] Low FPS detected: 50
+
+## 2026-08-28 04:47:53.897Z console.warn
+- text: [Perf] Low FPS detected: 17
+
+## 2026-08-28 04:49:23.555Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 04:52:04.687Z console.warn
+- text: [Perf] Low FPS detected: 51
+
+## 2026-08-28 04:52:39.870Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 04:53:42.252Z console.warn
+- text: [Perf] Low FPS detected: 44
+
+## 2026-08-28 04:53:43.252Z console.warn
+- text: [Perf] Low FPS detected: 51
+
+## 2026-08-28 04:54:19.438Z console.warn
+- text: [Perf] Low FPS detected: 48
+
+## 2026-08-28 04:55:04.595Z console.warn
+- text: [Perf] Low FPS detected: 46
+
+## 2026-08-28 04:55:09.601Z console.warn
+- text: [Perf] Low FPS detected: 38
+
+## 2026-08-28 04:55:10.601Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 04:55:24.710Z console.warn
+- text: [Perf] Low FPS detected: 21
+
+## 2026-08-28 04:55:45.878Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 04:56:39.080Z console.warn
+- text: [Perf] Low FPS detected: 51
+
+## 2026-08-28 04:57:13.250Z console.warn
+- text: [Perf] Low FPS detected: 51
+
+## 2026-08-28 04:58:32.922Z console.warn
+- text: [Perf] Low FPS detected: 52
+
+## 2026-08-28 04:59:42.576Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 05:02:13.604Z console.warn
+- text: [Perf] Low FPS detected: 52
+
+## 2026-08-28 05:02:14.607Z console.warn
+- text: [Perf] Low FPS detected: 41
+
+## 2026-08-28 05:02:31.653Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 05:02:40.664Z console.warn
+- text: [Perf] Low FPS detected: 52
+
+## 2026-08-28 05:03:32.897Z console.warn
+- text: [Perf] Low FPS detected: 50
+
+## 2026-08-28 05:07:51.993Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 05:08:15.210Z console.warn
+- text: [Perf] Low FPS detected: 49
+
+## 2026-08-28 05:08:52.496Z console.warn
+- text: [Perf] Low FPS detected: 46
+
+## 2026-08-28 05:08:56.531Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 05:09:43.847Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 05:09:44.850Z console.warn
+- text: [Perf] Low FPS detected: 25
+
+## 2026-08-28 05:19:33.806Z console.warn
+- text: [Perf] Low FPS detected: 47
+
+## 2026-08-28 05:29:09.680Z console.warn
+- text: [Perf] Low FPS detected: 53
+
+## 2026-08-28 05:34:41.589Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"Markets"}
+
+## 2026-08-28 05:34:41.601Z navigate
+- url: http://localhost:3000/dashboard#markets
+- via: pushState
+
+## 2026-08-28 05:34:42.408Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"Dashboard"}
+
+## 2026-08-28 05:34:42.409Z navigate
+- url: http://localhost:3000/dashboard
+- via: pushState
+
+## 2026-08-28 05:34:42.443Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 05:34:42.990Z console.warn
+- text: [Perf] Worker took 332.4ms (target <50ms)
+
+## 2026-08-28 05:34:43.451Z console.warn
+- text: [Perf] Low FPS detected: 47
+
+## 2026-08-28 05:34:43.761Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"AI Analysis"}
+
+## 2026-08-28 05:34:43.762Z navigate
+- url: http://localhost:3000/dashboard#analysis
+- via: pushState
+
+## 2026-08-28 05:34:44.929Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"Trading"}
+
+## 2026-08-28 05:34:44.930Z navigate
+- url: http://localhost:3000/dashboard#trading
+- via: pushState
+
+## 2026-08-28 05:34:46.734Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"Portfolio"}
+
+## 2026-08-28 05:34:46.735Z navigate
+- url: http://localhost:3000/dashboard#portfolio
+- via: pushState
+
+## 2026-08-28 05:34:49.525Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"Orders"}
+
+## 2026-08-28 05:34:49.526Z navigate
+- url: http://localhost:3000/dashboard#orders
+- via: pushState
+
+## 2026-08-28 05:34:51.082Z click
+- element: {"tag":"a","role":null,"ariaLabel":null,"name":null,"type":null,"id":null,"placeholder":null,"label":null,"value":null,"valueLength":0,"text":"Portfolio"}
+
+## 2026-08-28 05:34:51.082Z navigate
+- url: http://localhost:3000/dashboard#portfolio
+- via: pushState
+
+## 2026-08-28 05:37:00.562Z console.warn
+- text: [Perf] Low FPS detected: 54
+
+## 2026-08-28 05:41:26.646Z console.warn
+- text: [Perf] Low FPS detected: 42
+

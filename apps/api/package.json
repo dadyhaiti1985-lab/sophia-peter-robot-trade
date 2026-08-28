@@ -1,8 +1,9 @@
 {
-  "name": "api",
+  "name": "@app/api",
+  "version": "1.0.0",
   "type": "module",
-  "version": "0.0.0",
   "private": true,
+  "main": "src/main.js",
   "scripts": {
     "dev": "node --trace-deprecation --env-file=.env src/main.js",
     "start": "node --env-file=.env src/main.js",
