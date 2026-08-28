@@ -30,6 +30,7 @@ out/
 
 # OS files
 .DS_Store
+**/.DS_Store
 Thumbs.db
 
 # IDE & Editor files
@@ -37,3 +38,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+app 2/
+apps/tmp/
+app-tar-extracted/
