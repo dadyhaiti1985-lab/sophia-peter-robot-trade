@@ -1,9 +1,3 @@
-/*
- * PROPRIETARY INTELLECTUAL PROPERTY NOTICE
- * ORACLE TRADER PRO / DADY DESTIN — ALL RIGHTS RESERVED.
- * Unauthorized deployment, copying, or execution is prohibited.
- */
-
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -13,22 +7,14 @@ import morgan from 'morgan';
 import routes from './routes/index.js';
 import { errorMiddleware } from './middleware/error.js';
 import { globalRateLimit } from './middleware/global-rate-limit.js';
-import { securityShield } from './middleware/security-shield.js';
 import logger from './utils/logger.js';
 import securityHeaders from './middleware/security-headers.js';
 import { BodyLimit } from './constants/common.js';
-import { initializeBotService, stopAllBots } from './services/botTradingService.js';
-import { startPositionGuardLoop } from './services/live-position-guard.js';
-import { startCommandListener } from './utils/telegram.js';
-import { runLicenseGuardStartupCheck } from './middleware/license-guard.js';
-import { scheduleIntegrityMonitor } from './utils/integrity-monitor.js';
-
-await runLicenseGuardStartupCheck();
+import { initializeBotService } from './services/botTradingService.js';
 
 const app = express();
 
 app.set('trust proxy', true);
-app.disable('x-powered-by');
 
 // Log environment on startup
 logger.info('=== Backend Server Startup ===');
@@ -70,14 +56,10 @@ app.use(securityHeaders);
 // CORS Configuration
 // Allow requests from specified frontend origins with credentials
 const allowedOrigins = [
-	'https://oracletraderpro.com',
-	'https://www.oracletraderpro.com',
 	'https://horizons.hostinger.com',
 	'https://ede840c3-0d3d-4366-881e-753bec5b7927.app-preview.com',
-	'http://localhost:5173',
-	'http://localhost:3000',
-	// Allow Railway preview URLs automatically via env
-	...(process.env.RAILWAY_PUBLIC_DOMAIN ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`] : []),
+	'http://localhost:5173', // Vite dev server
+	'http://localhost:3000',  // Alternative dev port
 ];
 
 app.use(cors({
@@ -122,8 +104,6 @@ app.use(express.urlencoded({
 	limit: BodyLimit,
 }));
 
-app.use(securityShield);
-
 app.use('/', routes());
 
 app.use(errorMiddleware);
@@ -138,38 +118,10 @@ app.listen(port, () => {
 	logger.info(`🚀 API Server running on http://localhost:${port}`);
 	logger.info(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 
-	scheduleIntegrityMonitor({
-		files: [
-			'src/main.js',
-			'src/routes/index.js',
-			'src/routes/integrated-ai.js',
-			'src/constants/prompts.js',
-			'src/middleware/security-shield.js',
-			'src/routes/webhooks.js',
-			'src/utils/integrity-monitor.js',
-		],
-	});
-
 	// Initialize bot trading service
-	scheduleIntegrityMonitor({
-		files: [
-			'src/main.js',
-			'src/routes/index.js',
-			'src/routes/integrated-ai.js',
-			'src/constants/prompts.js',
-			'src/middleware/security-shield.js',
-			'src/routes/webhooks.js',
-		],
-		healthChecks: [
-			`http://127.0.0.1:${port}/health`,
-			`${process.env.POCKETBASE_URL || 'http://localhost:8090'}/api/health`,
-		],
-	});
 	initializeBotService().catch(err => {
 		logger.error('Failed to initialize bot trading service:', err.message);
 	});
-	startCommandListener({ stopAllBots, restartAllBots: initializeBotService });
-	startPositionGuardLoop();
 });
 
 export default app;

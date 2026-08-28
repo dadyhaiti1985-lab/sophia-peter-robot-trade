@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import pb from '@/lib/pocketbaseClient';
-import apiServerClient, { isApiOfflineError } from '@/lib/apiServerClient';
+import apiServerClient from '@/lib/apiServerClient';
 
 const EXCHANGES = ['Coinbase', 'Binance', 'Bybit', 'KuCoin'];
 const ADMIN_EMAILS = ['meahunlimitedgroupe@gmail.com', 'dadyhaiti1985@gmail.com'];
@@ -48,7 +48,6 @@ export default function OracleTraderProSetup() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [checkingCreds, setCheckingCreds] = useState(true);
-  const [apiStatusMessage, setApiStatusMessage] = useState('');
 
   // If user already has credentials, redirect straight to terminal
   useEffect(() => {
@@ -60,11 +59,7 @@ export default function OracleTraderProSetup() {
           if (data.connected) navigate('/dashboard', { replace: true });
         }
       })
-      .catch((err) => {
-        if (isApiOfflineError(err)) {
-          setApiStatusMessage('Seve API la pa aktive sou port 3001. Tanpri relanse backend la epi rekomanse.');
-        }
-      })
+      .catch(() => {})
       .finally(() => setCheckingCreds(false));
   }, [navigate]);
 
@@ -94,7 +89,6 @@ export default function OracleTraderProSetup() {
     const trimmedApiSecret = apiSecret.trim();
 
     setSaving(true);
-    setApiStatusMessage('');
     try {
       let res;
       try {
@@ -109,14 +103,7 @@ export default function OracleTraderProSetup() {
             takeProfitPercent: Number(takeProfit),
           }),
         });
-      } catch (requestError) {
-        if (isApiOfflineError(requestError)) {
-          const message = 'Seve API la pa aktive sou port 3001. Tanpri demare backend la epi re-eseye.';
-          setApiStatusMessage(message);
-          toast.error('API offline', { description: message });
-          return;
-        }
-
+      } catch (_) {
         // Fallback direct PocketBase save
         await pb.collection('users').update(user.id, {
           apiKey: trimmedApiKey, apiSecret: trimmedApiSecret, platform: exchange,
@@ -146,14 +133,7 @@ export default function OracleTraderProSetup() {
       toast.success('Kle API yo chifre epi sove!', { description: 'Ap transfere ou sou tablo trading ou...' });
       setTimeout(() => navigate('/dashboard'), 800);
     } catch (err) {
-      const isOffline = isApiOfflineError(err) || err?.code === 'API_OFFLINE';
-      const message = isOffline
-        ? 'Seve API la pa aktive sou port 3001. Tanpri demare backend la epi re-eseye.'
-        : (err.message || 'Something went wrong while processing your request');
-      if (isOffline) {
-        setApiStatusMessage(message);
-      }
-      toast.error('Erè', { description: message });
+      toast.error('Erè', { description: err.message });
     } finally {
       setSaving(false);
     }
@@ -161,23 +141,20 @@ export default function OracleTraderProSetup() {
 
   if (checkingCreds) {
     return (
-      <div className="min-h-screen w-full bg-[#0B0E14] flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293712_1px,transparent_1px),linear-gradient(to_bottom,#1f293712_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-        <Loader2 className="w-6 h-6 animate-spin text-primary relative z-10" />
+      <div className="min-h-screen bg-background grid-bg flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#0B0E14] text-white flex flex-col items-center justify-center relative overflow-hidden p-4">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293712_1px,transparent_1px),linear-gradient(to_bottom,#1f293712_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="min-h-screen bg-background grid-bg flex items-center justify-center p-4">
       <Helmet>
         <title>Konfigirasyon API Keys — Oracle Trader Pro</title>
         <meta name="description" content="Antre kle API exchange ou pou aktive Oracle Trader Pro." />
       </Helmet>
 
-      <div className="relative z-10 w-full max-w-lg">
+      <div className="w-full max-w-lg">
         {/* Logo / Brand */}
         <div className="flex items-center gap-3 mb-8 justify-center">
           <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/40 flex items-center justify-center glow-green">
@@ -221,13 +198,6 @@ export default function OracleTraderProSetup() {
               </p>
             </div>
           )}
-
-          {apiStatusMessage ? (
-            <div className="mb-5 p-3 rounded-lg border border-rose/40 bg-rose/10 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose mt-0.5 shrink-0" />
-              <p className="text-xs text-rose">{apiStatusMessage}</p>
-            </div>
-          ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

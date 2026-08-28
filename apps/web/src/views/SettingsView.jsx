@@ -1,11 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useThemePreference } from '@/contexts/ThemeContext.jsx';
 import './ViewStyles.css';
 
 export default function SettingsView() {
   const navigate = useNavigate();
-  const { themeMode, resolvedTheme, setThemeMode } = useThemePreference();
 
   return (
     <div className="view-container">
@@ -32,19 +30,10 @@ export default function SettingsView() {
 
         <div className="form-group">
           <label htmlFor="settings-theme">Theme</label>
-          <select
-            id="settings-theme"
-            name="settings-theme"
-            value={themeMode}
-            onChange={(e) => setThemeMode(e.target.value)}
-          >
+          <select id="settings-theme" name="settings-theme">
             <option value="dark">Dark Mode</option>
             <option value="light">Light Mode</option>
-            <option value="auto">Auto (Day/Night Schedule)</option>
           </select>
-          <div style={{ color: '#8899AA', fontSize: 12, marginTop: 6 }}>
-            Active now: {resolvedTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}
-          </div>
         </div>
 
         <div className="form-group">

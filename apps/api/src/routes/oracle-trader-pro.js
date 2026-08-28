@@ -3,9 +3,6 @@ import crypto from 'node:crypto';
 import authMiddleware from '../middleware/auth.js';
 import pb from '../utils/pbClient.js';
 import logger from '../utils/logger.js';
-import * as coinbase from '../utils/coinbase.js';
-import { executeTradeSignal } from '../controllers/bot-execution.js';
-import { getOpenPositionsForPair } from '../services/order-manager.js';
 import { hasTierByTitle } from '../utils/ecommerce-subscriptions.js';
 import { isConnectionError } from '../utils/pbClient.js';
 
@@ -46,102 +43,6 @@ function pocketbaseFailure(res, error, context) {
   }
   return res.status(502).json({ error: 'Storage backend error. Please retry.', code: 'PB_ERROR' });
 }
-
-function normalizeSymbol(symbol) {
-  return String(symbol || '').trim().replace(/[\s/]+/g, '-').replace(/_+/g, '-').toUpperCase();
-}
-
-router.get('/candles', async (req, res) => {
-  const symbol = normalizeSymbol(req.query.symbol || 'BTC-USD');
-  const interval = Number(req.query.interval || 300);
-  const limit = Math.min(Math.max(Number(req.query.limit || 48), 12), 200);
-
-  if (!/^[A-Z0-9]+-[A-Z0-9]+$/.test(symbol)) {
-    return res.status(400).json({ error: 'Invalid symbol', code: 'INVALID_SYMBOL' });
-  }
-
-  try {
-    const candles = await coinbase.getCandles(symbol, interval, limit);
-    const normalized = (Array.isArray(candles) ? candles : [])
-      .map((c) => {
-        if (Array.isArray(c)) {
-          return {
-            timestamp: c[0],
-            open: Number(c[1]),
-            high: Number(c[2]),
-            low: Number(c[3]),
-            close: Number(c[4]),
-            volume: Number(c[5]),
-          };
-        }
-        return {
-          timestamp: Number(c.timestamp || c.time || 0),
-          open: Number(c.open || 0),
-          high: Number(c.high || 0),
-          low: Number(c.low || 0),
-          close: Number(c.close || 0),
-          volume: Number(c.volume || 0),
-          sma: Number(c.sma || 0),
-          rsi: Number(c.rsi || 0),
-        };
-      })
-      .map((c) => ({
-        ...c,
-        t: new Date((c.timestamp || Date.now()) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        wick: [c.low, c.high],
-        up: Number(c.close) >= Number(c.open),
-      }));
-    return res.json(normalized);
-  } catch (error) {
-    logger.error('[oracle] GET /candles failed:', error?.message || error);
-    return res.status(502).json({ error: 'Failed to fetch market candles.', code: 'CANDLES_ERROR' });
-  }
-});
-
-router.post('/trades', async (req, res) => {
-  const signal = req.body?.signal || req.body;
-  if (!signal || typeof signal !== 'object') {
-    return res.status(400).json({ success: false, code: 'INVALID_SIGNAL', message: 'Trade signal is required.' });
-  }
-
-  try {
-    const result = await executeTradeSignal(req.user.id, signal);
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-    return res.json(result);
-  } catch (error) {
-    logger.error('[oracle] POST /trades failed:', error?.message || error);
-    return res.status(502).json({ success: false, code: 'EXECUTION_ERROR', message: 'Failed to execute trade.' });
-  }
-});
-
-router.get('/positions', async (req, res) => {
-  const symbol = req.query.symbol ? normalizeSymbol(req.query.symbol) : null;
-
-  try {
-    const positions = await getOpenPositionsForPair(req.user.id, symbol);
-    return res.json(
-      positions.map((pos) => ({
-        id: pos.id,
-        pair: pos.pair,
-        side: pos.side,
-        quantity: Number(pos.quantity || 0),
-        price: Number(pos.price || 0),
-        orderType: pos.orderType,
-        status: pos.status,
-        entryPrice: Number(pos.entryPrice || 0),
-        stopLoss: Number(pos.stopLoss || 0),
-        takeProfit: Number(pos.takeProfit || 0),
-        externalOrderId: pos.externalOrderId,
-        created: pos.created,
-        updated: pos.updated,
-      })),
-    );
-  } catch (error) {
-    return pocketbaseFailure(res, error, 'GET /positions');
-  }
-});
 
 function getEncryptionKey() {
   const secret = process.env.ORACLE_CREDENTIALS_ENCRYPTION_KEY;

@@ -2,11 +2,9 @@ import React from 'react';
 import { Route, Routes, BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { SubscriptionAuthProvider } from './contexts/SubscriptionAuthContext.jsx';
-import { ThemeProvider, useThemePreference } from './contexts/ThemeContext.jsx';
 import { Toaster } from 'sonner';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
-import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 import OracleTraderPro from './pages/OracleTraderPro.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
@@ -19,9 +17,7 @@ import PremiumDashboard from './pages/PremiumDashboard.jsx';
 import OracleTraderProSetup from './pages/OracleTraderProSetup.jsx';
 import OracleTraderProTerminal from './pages/OracleTraderProTerminal.jsx';
 
-function AppShell() {
-  const { resolvedTheme } = useThemePreference();
-
+function App() {
   return (
     <Router>
       <AuthProvider>
@@ -112,20 +108,10 @@ function AppShell() {
             </div>
           } />
         </Routes>
-        <Toaster theme={resolvedTheme} position="top-right" />
+        <Toaster theme="dark" position="top-right" />
         </SubscriptionAuthProvider>
       </AuthProvider>
     </Router>
-  );
-}
-
-function App() {
-  return (
-    <ThemeProvider>
-      <ErrorBoundary label="Application">
-        <AppShell />
-      </ErrorBoundary>
-    </ThemeProvider>
   );
 }
 

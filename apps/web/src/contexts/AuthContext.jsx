@@ -70,9 +70,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (email, password, passwordConfirm) => {
     try {
-      // Frontend signups create regular users.
-      // This app's public login/signup flow is intentionally separate from
-      // backend superuser auth, which uses `_superusers` only for internal API access.
+      // Create the user in PocketBase
       await pb.collection('users').create({
         email,
         password,
@@ -131,6 +129,8 @@ export const AuthProvider = ({ children }) => {
         errorMessage = "Pwoblèm rezo, tanpri esye ankò (Network error — could not reach the server).";
       } else if (error.status === 0) {
         errorMessage = "Pa gen koneksyon ak sèvè a. Tanpri eseye ankò pita (Cannot reach the authentication server).";
+      } else if (error.status === 404) {
+        errorMessage = "Sèvis otantifikasyon an pa jwenn (Auth service not reachable: 404).";
       } else if (error.status === 400) {
         // PocketBase intentionally returns a generic "Failed to authenticate." for
         // wrong email/password/unverified — surface a clearer, still-generic message

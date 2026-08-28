@@ -354,11 +354,11 @@ function BotControlPanel({ credentials, onEditKeys, isAdmin, navigate }) {
       ]);
 
       if (statusRes.status === 'fulfilled' && statusRes.value?.ok) {
-        const s = await statusRes.value.json().catch(() => ({}));
+        const s = await statusRes.value.json();
         setBotActive(Boolean(s.isActive));
       }
       if (tradesRes.status === 'fulfilled' && tradesRes.value?.ok) {
-        const data = await tradesRes.value.json().catch(() => []);
+        const data = await tradesRes.value.json();
         setTrades(Array.isArray(data) ? data.slice(0, 10) : []);
       }
 
@@ -728,7 +728,7 @@ export default function OracleTraderProDashboard() {
     try {
       const res = await authFetch('/oracle-trader-pro/credentials');
       if (res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json();
         if (data.connected) {
           setCredentials(data);
           markCredentialsSaved();

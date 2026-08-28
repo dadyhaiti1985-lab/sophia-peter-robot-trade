@@ -6,14 +6,6 @@ import { pocketbaseClient } from '@/lib/pocketbaseClient';
 const IMAGES_COLLECTION = '_integratedAiImages';
 const FILE_PATH_RE = /\/api\/files\/[^/]+\/([^/?#]+)\/([^/?#]+)/;
 const FILE_TOKEN_TTL_MS = 90_000;
-const CHAT_REQUEST_TIMEOUT_MS = 8_000;
-const MAX_MESSAGE_TEXT_LENGTH = 2_400;
-const SECTION_LIMITS = {
-	'STRATEGY PARAMETERS': 320,
-	'INDICATOR SNAPSHOT': 240,
-	'USER TRADING CONTEXT': 1_400,
-};
-const TIMEOUT_FALLBACK_RESPONSE = 'Market Analysis Ready: Current BTC bias is neutral/bullish with stable 4.2/10 risk metrics.';
 
 let cachedFileToken = null;
 let cachedFileTokenAt = 0;
@@ -67,42 +59,6 @@ async function signImageUrl(reference) {
 		filename,
 		{ token },
 	);
-}
-
-function truncateSection(text, sectionName, maxLength) {
-	const pattern = new RegExp(`(\\[${sectionName}\\][\\s\\S]*?)(\\[/${sectionName}\\])`, 'i');
-	return text.replace(pattern, (_, body, closingTag) => {
-		const openingTag = `[${sectionName}]`;
-		const rawContent = body.slice(openingTag.length).trim();
-		const normalizedContent = rawContent
-			.split('\n')
-			.map((line) => line.trim())
-			.filter(Boolean)
-			.join(' | ');
-		const trimmedContent = normalizedContent.length > maxLength
-			? `${normalizedContent.slice(0, maxLength).trimEnd()}...`
-			: normalizedContent;
-		return `${openingTag}\n${trimmedContent}\n${closingTag}`;
-	});
-}
-
-function sanitizeMessageText(text) {
-	let sanitized = String(text || '').replace(/\r\n/g, '\n');
-
-	for (const [sectionName, maxLength] of Object.entries(SECTION_LIMITS)) {
-		sanitized = truncateSection(sanitized, sectionName, maxLength);
-	}
-
-	sanitized = sanitized
-		.replace(/\n{3,}/g, '\n\n')
-		.replace(/[ \t]{2,}/g, ' ')
-		.trim();
-
-	if (sanitized.length > MAX_MESSAGE_TEXT_LENGTH) {
-		sanitized = `${sanitized.slice(0, MAX_MESSAGE_TEXT_LENGTH).trimEnd()}...`;
-	}
-
-	return sanitized;
 }
 
 /**
@@ -380,7 +336,6 @@ function useIntegratedAi() {
 	}, []);
 
 	const sendMessage = useCallback(async (userMessage, images = []) => {
-		const sanitizedUserMessage = sanitizeMessageText(userMessage);
 		setIsStreaming(true);
 		turnIdRef.current += 1;
 
@@ -388,7 +343,7 @@ function useIntegratedAi() {
 			...prev,
 			{
 				role: 'user',
-				content: sanitizedUserMessage,
+				content: userMessage,
 				...(images.length > 0 && {
 					images: images.map(img => URL.createObjectURL(img)),
 				}),
@@ -396,20 +351,117 @@ function useIntegratedAi() {
 			{ role: 'assistant', content: '' },
 		]);
 
+		const abortController = new AbortController();
+		abortControllerRef.current = abortController;
+
 		const MAX_RETRIES = 2;
+		let lastErr;
 
-		const replaceAssistantMessage = (content) => {
-			setMessages((prev) => {
-				const updated = [...prev];
-				const last = updated[updated.length - 1];
-				if (last?.role === 'assistant') {
-					updated[updated.length - 1] = { ...last, content };
-				}
-				return updated;
+		for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+			if (attempt > 0) {
+				// Reset the assistant placeholder content between retries
+				setMessages(prev => {
+					const updated = [...prev];
+					const last = updated[updated.length - 1];
+					if (last?.role === 'assistant') {
+						updated[updated.length - 1] = { ...last, content: '' };
+					}
+					return updated;
+				});
+				await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+			}
+
+		try {
+			const response = await integratedAiClient.stream('/integrated-ai/stream', {
+				body: { message: [{ text: userMessage, type: 'text' }] },
+				signal: abortController.signal,
+				images,
 			});
-		};
 
-		const removeEmptyAssistantPlaceholder = () => {
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+
+			while (true) {
+				const { done, value } = await reader.read();
+
+				if (done) {
+					break;
+				}
+
+				buffer += decoder.decode(value, { stream: true });
+
+				const events = buffer.split('\n\n');
+				buffer = events.pop() || '';
+
+				for (const event of events) {
+					if (!event.trim()) {
+						continue;
+					}
+
+					const lines = event.split('\n');
+					let eventData = '';
+
+					for (const line of lines) {
+						if (line.startsWith('data: ')) {
+							eventData += line.slice(6);
+						}
+					}
+
+					if (!eventData) {
+						continue;
+					}
+
+					const parsed = JSON.parse(eventData);
+
+					if (parsed.type === SSEEventType.Error) {
+						throw new Error(parsed.data.content);
+					}
+
+					if (parsed.type === SSEEventType.Completed) {
+						abortControllerRef.current = null;
+						setIsStreaming(false);
+						return;
+					}
+
+					handleSSEEvent(parsed);
+				}
+			}
+		} catch (err) {
+			if (err.name === 'AbortError') {
+				// Request was cancelled (navigation, unmount, or user stop) — clean up silently.
+				setMessages((prev) => {
+					const updated = [...prev];
+					const last = updated[updated.length - 1];
+					if (last?.role === 'assistant' && !last.content) {
+						updated.pop();
+					}
+					return updated;
+				});
+				abortControllerRef.current = null;
+				setIsStreaming(false);
+				return;
+			}
+
+			// Retry on 5xx (transient upstream/proxy errors like 503)
+			const isRetryable = !err.status || err.status >= 500;
+			if (isRetryable && attempt < MAX_RETRIES) {
+				lastErr = err;
+				continue;
+			}
+
+			// Final failure — show user-friendly message
+			const friendlyMessage = (err.status >= 500 || !err.status)
+				? 'AI assistant is temporarily unavailable. Please try again in a moment.'
+				: err.message;
+
+			toast({
+				variant: 'destructive',
+				title: 'AI Unavailable',
+				description: friendlyMessage,
+			});
+
+			// Drop the empty assistant placeholder so no blank bubble is left behind.
 			setMessages((prev) => {
 				const updated = [...prev];
 				const last = updated[updated.length - 1];
@@ -418,122 +470,17 @@ function useIntegratedAi() {
 				}
 				return updated;
 			});
-		};
 
-		try {
-			for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-				if (attempt > 0) {
-					replaceAssistantMessage('');
-					await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-				}
-
-				const abortController = new AbortController();
-				let timeoutTriggered = false;
-				const timeoutId = window.setTimeout(() => {
-					timeoutTriggered = true;
-					abortController.abort();
-				}, CHAT_REQUEST_TIMEOUT_MS);
-				abortControllerRef.current = abortController;
-
-				try {
-					const response = await integratedAiClient.stream('/integrated-ai/stream', {
-						body: { message: [{ text: sanitizedUserMessage, type: 'text' }] },
-						signal: abortController.signal,
-						images,
-					});
-
-					const reader = response.body.getReader();
-					const decoder = new TextDecoder();
-					let buffer = '';
-
-					while (true) {
-						const { done, value } = await reader.read();
-
-						if (done) {
-							break;
-						}
-
-						buffer += decoder.decode(value, { stream: true });
-						const events = buffer.split('\n\n');
-						buffer = events.pop() || '';
-
-						for (const event of events) {
-							if (!event.trim()) {
-								continue;
-							}
-
-							const lines = event.split('\n');
-							let eventData = '';
-
-							for (const line of lines) {
-								if (line.startsWith('data: ')) {
-									eventData += line.slice(6);
-								}
-							}
-
-							if (!eventData) {
-								continue;
-							}
-
-							const parsed = JSON.parse(eventData);
-
-							if (parsed.type === SSEEventType.Error) {
-								throw new Error(parsed.data.content);
-							}
-
-							if (parsed.type === SSEEventType.Completed) {
-								return;
-							}
-
-							handleSSEEvent(parsed);
-						}
-					}
-
-					return;
-				} catch (err) {
-					if (err.name === 'AbortError') {
-						if (timeoutTriggered) {
-							replaceAssistantMessage(TIMEOUT_FALLBACK_RESPONSE);
-							toast({
-								variant: 'default',
-								title: 'AI Timeout',
-								description: 'Assistant request exceeded 8 seconds. A quick fallback response was used.',
-							});
-							return;
-						}
-
-						removeEmptyAssistantPlaceholder();
-						return;
-					}
-
-					const isRetryable = !err.status || err.status >= 500;
-					if (isRetryable && attempt < MAX_RETRIES) {
-						continue;
-					}
-
-					const friendlyMessage = (err.status >= 500 || !err.status)
-						? 'AI assistant is temporarily unavailable. Please try again in a moment.'
-						: err.message;
-
-					toast({
-						variant: 'destructive',
-						title: 'AI Unavailable',
-						description: friendlyMessage,
-					});
-
-					removeEmptyAssistantPlaceholder();
-					return;
-				} finally {
-					window.clearTimeout(timeoutId);
-					if (abortControllerRef.current === abortController) {
-						abortControllerRef.current = null;
-					}
-				}
-			}
-		} finally {
 			abortControllerRef.current = null;
 			setIsStreaming(false);
+			return;
 		}
+		// Successful stream — break retry loop
+		break;
+		} // end for loop
+
+		abortControllerRef.current = null;
+		setIsStreaming(false);
 	}, [handleSSEEvent]);
 
 	const clearMessages = useCallback(() => {
