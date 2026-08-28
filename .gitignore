@@ -46,4 +46,4 @@ app-tar-extracted/
 # Saved guides & HTML docs
 Gide Aplikasyon sou Hostinger - Google Gemini*
 *.html
-deploy.yml
+/deploy.yml
