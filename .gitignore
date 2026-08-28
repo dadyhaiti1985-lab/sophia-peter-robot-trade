@@ -42,3 +42,8 @@ Thumbs.db
 app 2/
 apps/tmp/
 app-tar-extracted/
+
+# Saved guides & HTML docs
+Gide Aplikasyon sou Hostinger - Google Gemini*
+*.html
+deploy.yml

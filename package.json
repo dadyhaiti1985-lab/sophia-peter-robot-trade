@@ -6,6 +6,7 @@
     "setup": "npm install",
     "dev": "concurrently --kill-others --raw \"npm run dev --prefix apps/web\" \"npm run dev --prefix apps/api\" \"npm run dev --prefix apps/pocketbase\"",
     "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --prefix apps/web",
     "start": "concurrently --kill-others --raw \"node apps/api/src/main.js\" \"npm run start --prefix apps/pocketbase\"",
     "start:api": "npm run start --workspace=apps/api",
     "dev:api": "node --watch apps/api/src/main.js",
