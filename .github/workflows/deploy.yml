@@ -1,39 +1,32 @@
-name: Deploy to Hostinger via SFTP
+name: Deploy to Hostinger
 
 on:
   push:
     branches:
-      - main
+      - main # oswa master
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: 🚚 Checkout code
+      - name: Checkout kòd la
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js
+      - name: Enstale Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 20
 
-      - name: 🔨 Install and Build
+      - name: Enstale depandans ak Build
         run: |
           npm install
           npm run build
 
-      - name: 📋 Configure deploy variables
-        env:
-          SFTP_PORT_SECRET: ${{ secrets.SFTP_PORT }}
-        run: echo "DEPLOY_PORT=${SFTP_PORT_SECRET:-22}" >> $GITHUB_ENV
-
-      - name: 🚀 SFTP Deploy
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.6
+      - name: Voye sou Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.SFTP_SERVER }}
-          username: ${{ secrets.SFTP_USERNAME }}
-          password: ${{ secrets.SFTP_PASSWORD }}
-          port: ${{ env.DEPLOY_PORT }}
-          local_path: ./dist/*
-          remote_path: /domains/mistyrose-hummingbird-755752.hostingersite.com/public_html/
-          sftp_only: true
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./public_html/
