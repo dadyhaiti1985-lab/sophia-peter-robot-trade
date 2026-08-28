@@ -114,7 +114,7 @@ app.use((req, res) => {
 
 const port = process.env.PORT || 3001;
 
-app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
 	logger.info(`🚀 API Server running on http://localhost:${port}`);
 	logger.info(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 
@@ -122,6 +122,11 @@ app.listen(port, () => {
 	initializeBotService().catch(err => {
 		logger.error('Failed to initialize bot trading service:', err.message);
 	});
+});
+
+server.on('error', (err) => {
+	logger.error('Failed to start server:', err);
+	process.exit(1);
 });
 
 export default app;
