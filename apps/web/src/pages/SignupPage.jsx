@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useAuth } from '@/contexts/AuthContext.jsx';
@@ -9,20 +9,19 @@ import { Activity, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const SignupPage = () => {
-  const { signup, loginWithGoogle, checkCredentials } = useAuth();
+  const { signup, loginWithGoogle, checkCredentials, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const redirectingRef = React.useRef(false);
 
-  const redirectAfterAuth = async () => {
-    if (redirectingRef.current) return;
-    redirectingRef.current = true;
-    try {
-      const hasCredentials = await checkCredentials();
+  // Redirect only once AuthContext actually reflects the authenticated state,
+  // instead of navigating immediately after signup() resolves — avoids a race
+  // where ProtectedRoute reads a stale isAuthenticated and bounces back to /login.
+  useEffect(() => {
+    if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
-    } finally {
-      redirectingRef.current = false;
     }
-  };
+  }, [isAuthenticated, navigate]);
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '', passwordConfirm: '' });
 
@@ -45,7 +44,10 @@ const SignupPage = () => {
       await signup(formData.email, formData.password, formData.passwordConfirm);
       toast.success('Kont ou kreye avèk siksè! (Signup successful)');
       setFormData({ email: '', password: '', passwordConfirm: '' });
-      await redirectAfterAuth();
+      if (!redirectingRef.current) {
+        redirectingRef.current = true;
+        checkCredentials().finally(() => { redirectingRef.current = false; });
+      }
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -56,9 +58,8 @@ const SignupPage = () => {
   const handleGoogleAuth = () => {
     setLoading(true);
     loginWithGoogle()
-      .then(async () => {
+      .then(() => {
         toast.success('Koneksyon Google reyisi!');
-        await redirectAfterAuth();
       })
       .catch((error) => {
         toast.error('Erè Google: ' + error.message);

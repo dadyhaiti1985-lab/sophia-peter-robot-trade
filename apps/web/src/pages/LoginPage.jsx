@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useAuth } from '@/contexts/AuthContext.jsx';
@@ -9,7 +9,7 @@ import { Activity, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const LoginPage = () => {
-  const { login, loginWithGoogle, checkCredentials } = useAuth();
+  const { login, loginWithGoogle, checkCredentials, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const redirectingRef = React.useRef(false);
   const [loading, setLoading] = useState(false);
@@ -17,21 +17,14 @@ const LoginPage = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const redirectAfterLogin = async () => {
-    // Guard: prevent double-redirect
-    if (redirectingRef.current) return;
-    redirectingRef.current = true;
-    try {
-      const hasCredentials = await checkCredentials();
-      if (hasCredentials) {
-        navigate('/dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    } finally {
-      redirectingRef.current = false;
+  // Redirect only once AuthContext actually reflects the authenticated state,
+  // instead of navigating immediately after login() resolves — avoids a race
+  // where ProtectedRoute reads a stale isAuthenticated and bounces back to /login.
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
     }
-  };
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +38,10 @@ const LoginPage = () => {
       await login(cleanEmail, formData.password);
       toast.success('Ou konekte avèk siksè! (Login successful)');
       setFormData({ email: '', password: '' });
-      await redirectAfterLogin();
+      if (!redirectingRef.current) {
+        redirectingRef.current = true;
+        checkCredentials().finally(() => { redirectingRef.current = false; });
+      }
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -56,9 +52,8 @@ const LoginPage = () => {
   const handleGoogleAuth = () => {
     setLoading(true);
     loginWithGoogle()
-      .then(async () => {
+      .then(() => {
         toast.success('Koneksyon Google reyisi!');
-        await redirectAfterLogin();
       })
       .catch((error) => {
         toast.error('Erè Google: ' + error.message);
