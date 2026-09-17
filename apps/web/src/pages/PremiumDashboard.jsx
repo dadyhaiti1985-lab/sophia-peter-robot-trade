@@ -140,6 +140,7 @@ export default function PremiumDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [chartTimeframe, setChartTimeframe] = useState('4H');
 
   const [newsEvents, setNewsEvents] = useState([]);
   const { botActive, setBotActive, isLoading: toggling, toggleBot: toggleBotHook } = useBotToggle(false);
@@ -333,14 +334,17 @@ export default function PremiumDashboard() {
                 <div className="flex items-center gap-1">
                   {['1m','5m','15m','1H','4H','1D','1W','1M'].map(tf => (
                     <button key={tf}
-                      className={`px-2 py-1 rounded text-[11px] font-mono transition-colors ${tf === '4H' ? 'bg-[#2563EB] text-white' : 'text-[#8899AA] hover:text-white'}`}>
+                      type="button"
+                      onClick={() => setChartTimeframe(tf)}
+                      aria-pressed={tf === chartTimeframe}
+                      className={`px-2 py-1 rounded text-[11px] font-mono transition-colors ${tf === chartTimeframe ? 'bg-[#2563EB] text-white' : 'text-[#8899AA] hover:text-white'}`}>
                       {tf}
                     </button>
                   ))}
                 </div>
               </div>
               {/* TradingView-style chart placeholder with live price animation */}
-              <LiveChartCanvas />
+              <LiveChartCanvas timeframe={chartTimeframe} />
             </div>
             <AIAnalysisPanel />
           </section>
@@ -515,25 +519,52 @@ export default function PremiumDashboard() {
   );
 }
 
+// Per-timeframe simulation profile: how fast candles tick and how much
+// each one typically moves. Larger timeframes = choppier candles, slower
+// ticks (this remains a simulated preview, not real OHLC history -- see
+// TODO below -- but selecting a timeframe now visibly changes the chart
+// instead of being a dead button).
+const TIMEFRAME_PROFILE = {
+  '1m':  { intervalMs: 700,  vol: 0.0015 },
+  '5m':  { intervalMs: 900,  vol: 0.0022 },
+  '15m': { intervalMs: 1100, vol: 0.0030 },
+  '1H':  { intervalMs: 1300, vol: 0.0045 },
+  '4H':  { intervalMs: 1500, vol: 0.0060 },
+  '1D':  { intervalMs: 1800, vol: 0.0090 },
+  '1W':  { intervalMs: 2200, vol: 0.0140 },
+  '1M':  { intervalMs: 2600, vol: 0.0220 },
+};
+
 // Live animated SVG chart (simulated candlestick-style)
-function LiveChartCanvas() {
+// TODO: this still simulates candles client-side rather than fetching real
+// OHLC history per timeframe from the market-data API -- swap generateCandles()
+// for a real `/markets/:symbol/candles?tf=` call when that endpoint exists.
+function LiveChartCanvas({ timeframe = '4H' }) {
+  const profile = TIMEFRAME_PROFILE[timeframe] || TIMEFRAME_PROFILE['4H'];
   const [candles, setCandles] = useState(() => generateCandles(60));
   const [crosshair, setCrosshair] = useState(null);
   const svgRef = React.useRef(null);
+
+  // Re-seed the series whenever the selected timeframe changes, so clicking
+  // a button has an immediate, visible effect instead of only changing
+  // future ticks.
+  useEffect(() => {
+    setCandles(generateCandles(60));
+  }, [timeframe]);
 
   useEffect(() => {
     const t = setInterval(() => {
       setCandles(prev => {
         const last = prev[prev.length - 1];
-        const close = last.close * (1 + (Math.random() - 0.48) * 0.004);
+        const close = last.close * (1 + (Math.random() - 0.48) * profile.vol);
         const open = last.close;
-        const high = Math.max(open, close) * (1 + Math.random() * 0.003);
-        const low = Math.min(open, close) * (1 - Math.random() * 0.003);
+        const high = Math.max(open, close) * (1 + Math.random() * profile.vol * 0.6);
+        const low = Math.min(open, close) * (1 - Math.random() * profile.vol * 0.6);
         return [...prev.slice(1), { open, high, low, close }];
       });
-    }, 1500);
+    }, profile.intervalMs);
     return () => clearInterval(t);
-  }, []);
+  }, [profile]);
 
   // RAF-throttled mouse move for crosshair
   useEffect(() => {
@@ -597,6 +628,7 @@ function LiveChartCanvas() {
         })()}
       </svg>
       <div className="flex items-center gap-4 mt-1 text-[10px] text-[#4B5E74]">
+        <span className="text-[#2563EB] font-mono">{timeframe}</span>
         <span>EMA 9</span><span>EMA 21</span><span>RSI</span><span>MACD</span><span>VWAP</span><span>BB</span>
       </div>
     </div>
